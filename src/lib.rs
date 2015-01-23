@@ -19,7 +19,7 @@ impl Server {
         addr.to_socket_addr().map(|a| Server { addr: a })
     }
 
-    pub fn run<H: Handler>(&self, handler: H) -> IoResult<JoinGuard<'static, ()>> {
+    pub fn run<'a, H: Handler>(&self, handler: H) -> IoResult<JoinGuard<'a, ()>> {
         let tname = format!("TCP Listener {}", self.addr);
         debug!("Start: {}", tname);
 
