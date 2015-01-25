@@ -23,7 +23,7 @@ fn main() {
 
 fn handle_stream(mut stream: TcpStream) -> IoResult<()> {
     let src = stream.peer_name()
-        .map(|a| format!("{}", a))
+        .map(|a| a.to_string())
         .unwrap_or_else(|_| String::from_str("<Unknown Source>"));
     info!("[{}] Connect", src);
 
