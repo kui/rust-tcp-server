@@ -15,31 +15,41 @@ fn main() {
         Ok(s) => s,
         Err(e) => panic!("{}", e),
     };
-    let guard = server.run(|&: mut stream: TcpStream| -> IoResult<()> {
-        let src = stream.peer_name();
-        info!("Connect from {:?}", src);
+    match server.run(handle_stream) {
+        Ok(_) => info!("Start echo server on {}", server.addr),
+        Err(e) => panic!("{}", e),
+    };
+}
 
-        let mut stream = BufferedStream::new(stream);
-        loop {
-            let line = match stream.read_line() {
-                Ok(l) => l,
-                Err(IoError{ kind: EndOfFile, ..}) => break,
-                Err(e) => {
-                    warn!("{}", e);
-                    return Err(e);
-                }
-            };
-            try!(stream.write_str(line.as_slice()));
-            try!(stream.flush());
+fn handle_stream(mut stream: TcpStream) -> IoResult<()> {
+    let src = stream.peer_name()
+        .map(|a| format!("{}", a))
+        .unwrap_or_else(|_| String::from_str("<Unknown Source>"));
+    info!("[{}] Connect", src);
+
+    match handle_stream_main(BufferedStream::new(stream)) {
+        Ok(()) => {
+            info!("[{}] Disconnect", src);
+            Ok(())
         }
-
-        info!("Disconnect from {:?}", src);
-        Ok(())
-    });
-    if let Err(e) = guard {
-        panic!("{}", e);
+        Err(e) => {
+            warn!("[{}] {}", src, e);
+            Err(e)
+        }
     }
-    info!("Start echo server on {}", server.addr);
+}
+
+fn handle_stream_main(mut stream: BufferedStream<TcpStream>) -> IoResult<()> {
+    loop {
+        let line = match stream.read_line() {
+            Ok(l) => l,
+            Err(IoError{ kind: EndOfFile, ..}) => return Ok(()),
+            Err(e) => return Err(e)
+        };
+
+        try!(stream.write_str(line.as_slice()));
+        try!(stream.flush());
+    }
 }
 
 fn set_default_log() {
